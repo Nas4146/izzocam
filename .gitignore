@@ -1,0 +1,118 @@
+# iOS App (Xcode)
+ios/xcuserdata/
+ios/*.xcscmblueprint
+ios/*.xccheckout
+ios/build/
+ios/DerivedData/
+ios/*.moved-aside
+ios/*.pbxuser
+ios/*.mode1v3
+ios/*.mode2v3
+ios/*.perspectivev3
+ios/*.hmap
+ios/*.ipa
+ios/*.dSYM.zip
+ios/*.dSYM
+ios/timeline.xctimeline
+ios/playground.xcworkspace
+ios/.swiftpm/
+ios/Carthage/Build/
+ios/Dependencies/
+ios/.accio/
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/screenshots/**/*.png
+ios/fastlane/test_output
+ios/iOSInjectionProject/
+
+# Firebase & Google Services (NEVER commit!)
+ios/izzocam/GoogleService-Info.plist
+backend/firebase-service-account.json
+**/GoogleService-Info.plist
+**/google-services.json
+
+# Backend (Node.js)
+backend/node_modules/
+backend/dist/
+backend/build/
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/lerna-debug.log*
+backend/.pnpm-debug.log*
+backend/coverage/
+backend/.nyc_output/
+backend/.cache/
+backend/.parcel-cache/
+backend/.next/
+backend/out/
+backend/.nuxt/
+backend/.vuepress/dist/
+backend/.serverless/
+backend/.fusebox/
+backend/.dynamodb/
+backend/.tern-port/
+
+# Environment Variables (CRITICAL - NEVER commit!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/.env.*
+ios/.env
+ios/.env.*
+
+# Python virtual environment (if any)
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Package manager lock files (optional - team decision)
+# backend/package-lock.json
+# backend/yarn.lock

@@ -1,0 +1,12 @@
+"app_title" = "IzzoCam";
+"sign_in_google" = "Continue with Google";
+"sign_in_email" = "Sign in with email";
+"sign_out" = "Sign out";
+"status_live" = "Live";
+"status_offline" = "Offline";
+"status_connecting" = "Connecting…";
+"metrics_title" = "Viewer Metrics";
+"metrics_current" = "Watching now";
+"metrics_peak" = "Peak today";
+"metrics_total" = "View sessions";
+"stream_offline" = "Izzo is napping. Stream will resume soon.";
