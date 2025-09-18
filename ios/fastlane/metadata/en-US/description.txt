@@ -1,0 +1,12 @@
+IzzoCam - Live Video Streaming
+
+Experience high-quality live video streaming with IzzoCam. Connect with friends, family, and audiences through seamless real-time video communication.
+
+Features:
+• High-quality live video streaming
+• Real-time communication
+• Easy-to-use interface
+• Secure authentication with Google Sign-In
+• Optimized for iOS devices
+
+Perfect for content creators, businesses, and anyone who wants to share live moments with their audience.

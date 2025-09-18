@@ -18,6 +18,10 @@ ios/playground.xcworkspace
 ios/.swiftpm/
 ios/Carthage/Build/
 ios/Dependencies/
+
+# iOS secrets and API keys
+ios/.env
+ios/fastlane/AuthKey.p8
 ios/.accio/
 ios/fastlane/report.xml
 ios/fastlane/Preview.html

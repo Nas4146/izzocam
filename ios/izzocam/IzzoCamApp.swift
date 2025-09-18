@@ -1,6 +1,6 @@
 import SwiftUI
 import FirebaseCore
-import FirebaseAuths
+import FirebaseAuth
 import GoogleSignInSwift
 import GoogleSignIn
 import LiveKit

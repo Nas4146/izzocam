@@ -1,0 +1,134 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    # Set up App Store Connect API key
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_filepath: "fastlane/AuthKey.p8",
+      duration: 1200, # optional (maximum 1200)
+      in_house: false # optional but may be required if using match/sigh
+    )
+    
+    increment_build_number(xcodeproj: "izzocam.xcodeproj")
+    build_app(
+      scheme: "izzocam",
+      export_method: "app-store"
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      api_key: api_key
+    )
+  end
+
+  desc "Push a new release build to the App Store"
+  lane :release do
+    # Set up App Store Connect API key
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_filepath: "fastlane/AuthKey.p8",
+      duration: 1200,
+      in_house: false
+    )
+    
+    # Increment build number and optionally version
+    increment_build_number(xcodeproj: "izzocam.xcodeproj")
+    
+    # Build the app for App Store release
+    build_app(
+      scheme: "izzocam",
+      export_method: "app-store",
+      configuration: "Release"
+    )
+    
+    # Upload to App Store Connect
+    upload_to_app_store(
+      api_key: api_key,
+      skip_metadata: false,
+      skip_screenshots: true,
+      skip_binary_upload: false,
+      force: true, # Skip HTML report verification
+      submit_for_review: false, # Set to true when ready for automatic submission
+      automatic_release: false, # Set to true for automatic release after approval
+      submission_information: {
+        add_id_info_limits_tracking: true,
+        add_id_info_serves_ads: false,
+        add_id_info_tracks_action: true,
+        add_id_info_tracks_install: true,
+        add_id_info_uses_idfa: true,
+        content_rights_has_rights: true,
+        content_rights_contains_third_party_content: false,
+        export_compliance_platform: 'ios',
+        export_compliance_compliance_required: false,
+        export_compliance_encryption_updated: false,
+        export_compliance_app_type: nil,
+        export_compliance_uses_encryption: false,
+        export_compliance_is_exempt: false,
+        export_compliance_contains_third_party_cryptography: false,
+        export_compliance_contains_proprietary_cryptography: false,
+        export_compliance_available_on_french_store: false
+      }
+    )
+  end
+
+  desc "Increment version number (major.minor.patch)"
+  lane :bump_version do |options|
+    version_type = options[:type] || "patch" # patch, minor, major
+    increment_version_number(
+      bump_type: version_type,
+      xcodeproj: "izzocam.xcodeproj"
+    )
+    increment_build_number(xcodeproj: "izzocam.xcodeproj")
+  end
+
+  desc "Get current version and build number"
+  lane :version_info do
+    version = get_version_number(xcodeproj: "izzocam.xcodeproj")
+    build = get_build_number(xcodeproj: "izzocam.xcodeproj")
+    UI.message "Current version: #{version} (#{build})"
+  end
+
+  desc "Build release candidate for testing"
+  lane :release_candidate do
+    # Set up App Store Connect API key
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_filepath: "fastlane/AuthKey.p8",
+      duration: 1200,
+      in_house: false
+    )
+    
+    increment_build_number(xcodeproj: "izzocam.xcodeproj")
+    build_app(
+      scheme: "izzocam",
+      export_method: "app-store",
+      configuration: "Release"
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      api_key: api_key,
+      changelog: "Release candidate build for App Store submission testing"
+    )
+  end
+end

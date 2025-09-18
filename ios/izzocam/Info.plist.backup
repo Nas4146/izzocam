@@ -2,8 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>This app uses video streaming technology that may reference camera APIs, but does not access your device's camera. You are viewing streams from remote cameras only.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>IzzoCam connects to Izzo’s home network to fetch stream access tokens.</string>
+	<string>IzzoCam connects to Izzo's home network to fetch stream access tokens.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
