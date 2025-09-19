@@ -24,10 +24,35 @@ izzocam/
 - **📱 Native iOS App**: Beautiful SwiftUI interface with custom animations
 - **🔐 Authentication**: Google Sign-In and Apple Sign-In integration
 - **📹 Real-time Streaming**: LiveKit-powered video streaming
+- **🤖 AI Commentary**: GPT-4o mini powered commentary system with hourly recaps
+- **📊 Smart Monitoring**: Automated cost tracking and rate limiting
 - **☁️ Backend API**: Node.js with Firebase integration
 - **🎨 Modern Design**: Custom design system with gradients and animations
 
-## 🚀 Quick Start
+## Production URLs
+
+- **Backend API**: https://izzocam-backend-17482328523.us-central1.run.app/api
+- **Monitoring Health**: https://izzocam-backend-17482328523.us-central1.run.app/api/monitoring/health
+- **Frontend Web App**: https://izzocam.web.app
+- **LiveKit Stream**: wss://izzocam-5u8a05zv.livekit.cloud
+- **Firebase Project**: izzocam
+- **Cloud Storage**: izzocam-snapshots
+
+## System Status
+
+✅ **Phase 4 Complete**: End-to-end production deployment with comprehensive testing, monitoring, rate limiting, and documentation.
+
+- Backend deployed to Google Cloud Run
+- Firestore database with security rules deployed  
+- Firebase Authentication integrated
+- LiveKit WebRTC streaming active
+- AI commentary system operational
+- Real-time cost monitoring with Firestore
+- Rate limiting for commentary requests (2/10min)
+- Complete test suite (8 passing tests)
+- Error logging and monitoring active
+
+## Quick Start
 
 ### Prerequisites
 
@@ -63,6 +88,8 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 LIVEKIT_API_KEY=your-livekit-api-key
 LIVEKIT_API_SECRET=your-livekit-secret
 LIVEKIT_URL=wss://your-project.livekit.cloud
+OPENAI_API_KEY=your-openai-api-key
+GCS_BUCKET_NAME=your-gcs-bucket-name
 ```
 
 Start the backend:
@@ -114,26 +141,167 @@ npm test             # Run tests
 - **Express**: Web framework
 - **Firebase Admin**: Backend Firebase integration
 - **LiveKit Server**: Video streaming backend
+- **OpenAI GPT-4o mini**: AI commentary generation
+- **Google Cloud Storage**: Snapshot storage with lifecycle management
+
+### Infrastructure
+- **Google Cloud Run**: Serverless container deployment
+- **Cloud Scheduler**: Automated cron jobs for snapshots and recaps
+- **Firebase Hosting**: Web frontend and API proxying
+- **Firestore**: Real-time database for commentary and monitoring
 
 ## 🚀 Deployment
 
-### Backend Deployment
+### Backend Deployment (Cloud Run + Firebase Hosting)
 
-**Heroku:**
+1. **Build & push container**
 ```bash
 cd backend
-git subtree push --prefix=backend heroku main
+gcloud builds submit --tag gcr.io/<project-id>/izzocam-backend .
 ```
 
-**Vercel:**
+2. **Deploy to Cloud Run**
 ```bash
-cd backend
-vercel --prod
+gcloud run deploy izzocam-backend \
+  --image gcr.io/<project-id>/izzocam-backend \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars "FIREBASE_PROJECT_ID=...,..."
 ```
 
-**AWS/GCP/Azure:**
-- Build: `npm run build`
-- Deploy `dist/` folder
+3. **Firebase Hosting rewrite**
+```bash
+firebase deploy --only hosting
+```
+
+The rewrite in `firebase.json` proxies `/api/**` to the Cloud Run service so LiveKit webhooks and the mobile app can use `https://<project>.web.app/api/...`.
+
+## 🤖 AI Commentary System Setup
+
+### Google Cloud Storage Configuration
+
+1. **Create GCS bucket for snapshots**:
+```bash
+gsutil mb gs://your-snapshots-bucket
+```
+
+2. **Set up lifecycle policy** (auto-delete after 24 hours):
+```bash
+cat > lifecycle.json << EOF
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {"type": "Delete"},
+        "condition": {"age": 1}
+      }
+    ]
+  }
+}
+EOF
+
+gsutil lifecycle set lifecycle.json gs://your-snapshots-bucket
+```
+
+3. **Configure bucket permissions**:
+```bash
+# Grant service account access
+gsutil iam ch serviceAccount:your-service-account@project.iam.gserviceaccount.com:objectAdmin gs://your-snapshots-bucket
+```
+
+### OpenAI API Setup
+
+1. **Get API key** from [OpenAI Platform](https://platform.openai.com/api-keys)
+2. **Add to environment variables**:
+```env
+OPENAI_API_KEY=sk-...your-key-here
+```
+
+### Firestore Collections Setup
+
+The system automatically creates these collections:
+- `commentary/{date}/entries/{id}` - Commentary entries
+- `snapshots/{timestamp}` - Snapshot metadata  
+- `settings/commentary` - Configuration (dog name, tone)
+- `monitoring_usage` - Usage and cost tracking
+- `monitoring_errors` - Error logging
+
+### Firestore Security Rules
+
+The project includes comprehensive security rules in `firestore.rules`:
+- **Commentary entries**: Readable by authenticated users, writable by backend service
+- **Configuration**: Readable by authenticated users, writable by admins  
+- **Snapshots**: Backend service read/write access only
+- **Monitoring data**: Backend service write access, admin read access
+
+Deploy the rules:
+```bash
+firebase deploy --only firestore:rules
+```
+
+### Cloud Scheduler Jobs
+
+1. **Snapshot capture job** (every 5 minutes):
+```bash
+gcloud scheduler jobs create http snapshot-capture \
+  --schedule="*/5 * * * *" \
+  --uri="https://your-project.web.app/api/cron/capture-snapshots" \
+  --http-method=POST \
+  --headers="X-Cloudscheduler=true"
+```
+
+2. **Hourly recap generation**:
+```bash
+gcloud scheduler jobs create http hourly-recap \
+  --schedule="0 * * * *" \
+  --uri="https://your-project.web.app/api/cron/generate-recap" \
+  --http-method=POST \
+  --headers="X-Cloudscheduler=true"
+```
+
+3. **Cost monitoring** (every hour):
+```bash
+gcloud scheduler jobs create http cost-monitoring \
+  --schedule="0 * * * *" \
+  --uri="https://your-project.web.app/api/cron/monitor-costs" \
+  --http-method=POST \
+  --headers="X-Cloudscheduler=true"
+```
+
+### LiveKit Egress Configuration
+
+Set up webhook for snapshot capture:
+```bash
+# Configure in LiveKit Cloud dashboard
+Webhook URL: https://your-project.web.app/api/egress/webhook
+Events: egress_ended
+```
+
+### Rate Limiting Configuration
+
+The system includes built-in rate limiting:
+- **Commentary requests**: 2 per 10 minutes per user
+- **General API**: 60 requests per minute
+- **Config endpoint**: 10 requests per minute
+
+### Cost Monitoring
+
+Monitor costs via API endpoints:
+```bash
+# Get usage summary
+curl https://your-project.web.app/api/monitoring/usage
+
+# Get error summary  
+curl https://your-project.web.app/api/monitoring/errors
+
+# Check current rate limits
+curl https://your-project.web.app/api/monitoring/rate-limits
+```
+
+Cost alerts are triggered when:
+- Daily costs exceed $10
+- Hourly costs exceed $1
 
 ### iOS App Deployment
 
@@ -183,6 +351,13 @@ npm run test:e2e       # End-to-end tests
 npm run test:watch     # Watch mode
 ```
 
+**Test Coverage Includes:**
+- API endpoint validation
+- Authentication and rate limiting
+- OpenAI integration with mocks
+- Error handling and monitoring
+- Commentary generation pipeline
+
 ### iOS Tests
 - Unit tests: ⌘U in Xcode
 - UI tests: Select UI test target
@@ -193,8 +368,13 @@ npm run test:watch     # Watch mode
 - ✅ **iOS App**: Complete with modern UI
 - ✅ **Authentication**: Google + Apple Sign-In
 - ✅ **Video Streaming**: LiveKit integration
+- ✅ **AI Commentary System**: GPT-4o mini integration with hourly recaps
+- ✅ **Snapshot Pipeline**: Automated capture and storage
+- ✅ **Monitoring & Alerts**: Cost tracking and error logging
+- ✅ **Rate Limiting**: User and API protection
 - ✅ **Backend API**: Node.js + Firebase
 - ✅ **App Store**: Ready for TestFlight
+- ✅ **Testing Suite**: Comprehensive E2E tests
 - 🔄 **CI/CD**: In progress
 
 ## 🤝 Contributing

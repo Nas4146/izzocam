@@ -1,0 +1,4 @@
+
+# Cloud deployment files with secrets
+.env.cloud
+env-vars.yaml

@@ -3,377 +3,260 @@ import LiveKit
 
 struct StreamPlayerView: View {
     @EnvironmentObject private var session: AppSession
-    @State private var showControls = true
-    @State private var hideControlsTask: Task<Void, Never>?
-
-    var body: some View {
-        ZStack {
-            // Video player
-            LiveKitVideoView(room: session.liveKitController.room, liveKitController: session.liveKitController)
-                .background(
-                    LinearGradient(
-                        colors: [Color.black, Color.izzoTextPrimary],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .onTapGesture {
-                    withAnimation(.izzoEaseInOut) {
-                        showControls.toggle()
-                    }
-                    scheduleHideControls()
-                }
-            
-            // Loading/Status overlay
-            if session.streamState != .live {
-                StreamStatusOverlay(state: session.streamState)
-            }
-            
-            // Controls overlay
-            if showControls && session.streamState == .live {
-                StreamControlsOverlay()
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .scale(scale: 0.9)),
-                        removal: .opacity
-                    ))
-            }
-        }
-        .onAppear {
-            scheduleHideControls()
-        }
-        .onDisappear {
-            hideControlsTask?.cancel()
-        }
-        .onReceive(session.liveKitController.$tracksUpdated) { _ in
-            // Video view will automatically update when tracksUpdated changes
-            print("[StreamPlayerView] Tracks updated notification received")
-        }
-    }
-    
-    private func scheduleHideControls() {
-        hideControlsTask?.cancel()
-        hideControlsTask = Task {
-            try? await Task.sleep(for: .seconds(3))
-            if !Task.isCancelled {
-                await MainActor.run {
-                    withAnimation(.izzoEaseInOut) {
-                        showControls = false
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct StreamStatusOverlay: View {
-    let state: StreamState
-    @State private var pulseAnimation = false
+    @State private var showControls = false
+    @State private var controlsTimer: Timer?
+    @State private var isFullscreen = false
     
     var body: some View {
         ZStack {
-            // Semi-transparent background
-            Color.black.opacity(0.7)
+            // Background
+            Color.black
+                .ignoresSafeArea()
             
-            VStack(spacing: 24) {
-                // Status icon with animation
-                ZStack {
-                    Circle()
-                        .fill(iconColor.opacity(0.2))
-                        .frame(width: 120, height: 120)
-                        .scaleEffect(pulseAnimation ? 1.2 : 1.0)
-                        .opacity(pulseAnimation ? 0.5 : 1.0)
-                        .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: pulseAnimation)
+            // Live stream video
+            if session.liveKitController.connectionState == .connected {
+                LiveKitVideoView()
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showControls.toggle()
+                        }
+                        resetControlsTimer()
+                    }
+            } else {
+                // Placeholder when not connected
+                VStack(spacing: 20) {
+                    Image(systemName: "video.slash")
+                        .font(.system(size: 80))
+                        .foregroundColor(.gray)
                     
-                    Circle()
-                        .fill(iconColor.opacity(0.3))
-                        .frame(width: 80, height: 80)
-                    
-                    Image(systemName: iconName)
-                        .font(.system(size: 32, weight: .bold))
+                    Text("Stream Offline")
+                        .font(.title2)
                         .foregroundColor(.white)
-                }
-                
-                VStack(spacing: 12) {
-                    Text(statusTitle)
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
                     
-                    Text(statusSubtitle)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                }
-                
-                if state == .connecting {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(1.2)
+                    if session.isLoadingStream {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(.white)
+                    }
                 }
             }
-            .padding(.horizontal, 40)
-        }
-        .onAppear {
-            pulseAnimation = true
-        }
-    }
-    
-    private var iconColor: Color {
-        switch state {
-        case .offline: return .izzoError
-        case .connecting: return .izzoWarning
-        case .live: return .izzoSuccess
-        }
-    }
-    
-    private var iconName: String {
-        switch state {
-        case .offline: return "moon.zzz.fill"
-        case .connecting: return "wifi"
-        case .live: return "play.circle.fill"
-        }
-    }
-    
-    private var statusTitle: String {
-        switch state {
-        case .offline: return "Izzo is Sleeping"
-        case .connecting: return "Connecting..."
-        case .live: return "Live!"
-        }
-    }
-    
-    private var statusSubtitle: String {
-        switch state {
-        case .offline: return "Check back soon for more adorable moments"
-        case .connecting: return "Getting the stream ready for you"
-        case .live: return "Enjoy watching Izzo!"
-        }
-    }
-}
-
-struct StreamControlsOverlay: View {
-    @State private var showFullscreen = false
-    
-    var body: some View {
-        VStack {
-            // Top controls
-            HStack {
-                Button(action: {}) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    showFullscreen.toggle()
-                }) {
-                    Image(systemName: showFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
             
-            Spacer()
-            
-            // Bottom controls
-            VStack(spacing: 16) {
-                // Live indicator
-                HStack {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 8, height: 8)
+            // Overlay controls
+            if showControls {
+                VStack {
+                    // Top controls
+                    HStack {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isFullscreen.toggle()
+                            }
+                        }) {
+                            Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                        }
                         
-                        Text("LIVE")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                        Spacer()
+                        
+                        // Live indicator with design system integration
+                        if session.streamState == .live {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(Color.izzoError)
+                                    .frame(width: 12, height: 12)
+                                    .scaleEffect(showControls ? 1.0 : 0.8)
+                                    .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: showControls)
+                                
+                                Text("LIVE")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.black.opacity(0.6))
+                            .clipShape(Capsule())
+                        }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.6))
-                    )
+                    .padding()
                     
                     Spacer()
                     
-                    Text("HD")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.black.opacity(0.6))
-                        )
+                    // Bottom controls with design system styling
+                    HStack(spacing: 20) {
+                        // Mute button
+                        Button(action: {
+                            session.liveKitController.toggleMicrophone()
+                        }) {
+                            Image(systemName: session.liveKitController.isMicrophoneEnabled ? "mic" : "mic.slash")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(
+                                    LinearGradient.izzoPrimaryGradient
+                                        .opacity(0.8)
+                                )
+                                .clipShape(Circle())
+                        }
+                        
+                        // Camera toggle
+                        Button(action: {
+                            session.liveKitController.toggleCamera()
+                        }) {
+                            Image(systemName: session.liveKitController.isCameraEnabled ? "video" : "video.slash")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(
+                                    LinearGradient.izzoPrimaryGradient
+                                        .opacity(0.8)
+                                )
+                                .clipShape(Circle())
+                        }
+                        
+                        // Volume control
+                        Button(action: {
+                            // Toggle speaker/headphones
+                        }) {
+                            Image(systemName: "speaker.wave.2")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                        }
+                    }
+                    .padding()
                 }
-                
-                // Control buttons
-                HStack(spacing: 32) {
-                    ControlButton(icon: "heart.fill", action: {})
-                    ControlButton(icon: "message.fill", action: {})
-                    ControlButton(icon: "square.and.arrow.up.fill", action: {})
-                }
+                .transition(.opacity)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
-        }
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.clear,
-                    Color.black.opacity(0.3),
-                    Color.clear,
-                    Color.black.opacity(0.6)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-    }
-}
-
-struct ControlButton: View {
-    let icon: String
-    let action: () -> Void
-    @State private var isPressed = false
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(.izzoSpring) {
-                isPressed = true
-            }
-            action()
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.izzoSpring) {
-                    isPressed = false
+            // Connection status overlay with design system
+            if session.streamState == .connecting {
+                VStack(spacing: 15) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .tint(Color.izzoOrange)
+                    
+                    Text("Connecting to stream...")
+                        .font(.headline)
+                        .foregroundColor(.white)
                 }
-            }
-        }) {
-            Image(systemName: icon)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundColor(.white)
-                .frame(width: 48, height: 48)
+                .padding(20)
                 .background(
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
-                        .background(
-                            Circle()
-                                .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.black.opacity(0.8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.izzoOrange.opacity(0.3), lineWidth: 1)
                         )
                 )
-                .scaleEffect(isPressed ? 0.9 : 1.0)
+            }
+            
+            // Error state
+            if case .error(let message) = session.streamState {
+                VStack(spacing: 15) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 40))
+                        .foregroundColor(Color.izzoError)
+                    
+                    Text("Connection Error")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                    
+                    Button(action: {
+                        Task {
+                            await session.refreshStream()
+                        }
+                    }) {
+                        Text("Retry")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color.izzoOrange)
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(20)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.black.opacity(0.8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.izzoError.opacity(0.3), lineWidth: 1)
+                        )
+                )
+            }
+        }
+        .navigationBarHidden(isFullscreen)
+        .statusBarHidden(isFullscreen)
+        .onAppear {
+            showControls = true
+            resetControlsTimer()
+        }
+        .onDisappear {
+            controlsTimer?.invalidate()
+        }
+    }
+    
+    private func resetControlsTimer() {
+        controlsTimer?.invalidate()
+        controlsTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) { _ in
+            withAnimation(Animation.izzoEaseInOut) {
+                showControls = false
+            }
         }
     }
 }
 
+// MARK: - LiveKit Video View Integration
 struct LiveKitVideoView: UIViewRepresentable {
-    let room: Room
-    @State private var videoTrack: RemoteVideoTrack?
-    @ObservedObject var liveKitController: LiveKitController
-
+    @EnvironmentObject private var session: AppSession
+    
     func makeUIView(context: Context) -> VideoView {
-        let view = VideoView()
-        view.layoutMode = .fit
-        view.backgroundColor = .black
-        
-        // Set up room delegate to listen for track changes
-        room.add(delegate: context.coordinator)
-        
-        // Initial track setup
-        DispatchQueue.main.async {
-            context.coordinator.parent.updateVideoTrack()
-        }
-        
-        return view
+        let videoView = VideoView()
+        videoView.layoutMode = .fill
+        videoView.isDebugMode = false
+        videoView.backgroundColor = UIColor.black
+        return videoView
     }
-
+    
     func updateUIView(_ uiView: VideoView, context: Context) {
-        // Check for track updates when tracksUpdated changes
-        DispatchQueue.main.async {
-            self.updateVideoTrack()
-        }
+        // Get the remote video track from LiveKit room using working pattern from git
+        let room = session.liveKitController.room
         
-        // Always update the track, even if nil
-        uiView.track = videoTrack
-        
-        if videoTrack != nil {
-            print("[LiveKitVideoView] VideoView updated with track: \(videoTrack != nil ? "YES" : "NO")")
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, RoomDelegate {
-        let parent: LiveKitVideoView
-        
-        init(_ parent: LiveKitVideoView) {
-            self.parent = parent
-        }
-        
-        func room(_ room: Room, participant: RemoteParticipant, didPublishTrack publication: RemoteTrackPublication) {
-            DispatchQueue.main.async {
-                self.parent.updateVideoTrack()
-            }
-        }
-        
-        func room(_ room: Room, participant: RemoteParticipant, didUnpublishTrack publication: RemoteTrackPublication) {
-            DispatchQueue.main.async {
-                self.parent.updateVideoTrack()
-            }
-        }
-        
-        func room(_ room: Room, didUpdateConnectionState state: ConnectionState, from oldState: ConnectionState) {
-            DispatchQueue.main.async {
-                self.parent.updateVideoTrack()
-            }
-        }
-    }
-    
-    func updateVideoTrack() {
-        DispatchQueue.main.async {
-            let newTrack = self.firstRemoteVideoTrack()
-            print("[StreamPlayerView] Updating video track: \(newTrack != nil ? "Found track" : "No track")")
-            self.videoTrack = newTrack
-        }
-    }
-
-    private func firstRemoteVideoTrack() -> RemoteVideoTrack? {
-        print("[StreamPlayerView] Searching for video tracks in \(room.remoteParticipants.count) participants")
+        // Find the first remote participant with a video track
         for participant in room.remoteParticipants.values {
-            let participantIdentity: String = participant.identity?.stringValue ?? "unknown"
-            print("[StreamPlayerView] Participant \(participantIdentity) has \(participant.trackPublications.count) publications")
             for publication in participant.trackPublications.values {
                 if let remotePublication = publication as? RemoteTrackPublication {
-                    print("[StreamPlayerView] Track: kind=\(publication.kind), rawValue=\(publication.kind.rawValue), isSubscribed=\(remotePublication.isSubscribed)")
-                    // Kind.video has rawValue of 1, Kind.audio has rawValue of 0
+                    // Use rawValue comparison like the working git version
                     guard publication.kind.rawValue == 1, // video
                           remotePublication.isSubscribed,
                           let track = remotePublication.track as? RemoteVideoTrack else {
                         continue
                     }
-                    print("[StreamPlayerView] Found subscribed video track!")
-                    return track
-                } else {
-                    print("[StreamPlayerView] Track: kind=\(publication.kind), rawValue=\(publication.kind.rawValue)")
-                    guard publication.kind.rawValue == 1, // video
-                          let remotePublication = publication as? RemoteTrackPublication,
-                          let track = remotePublication.track as? RemoteVideoTrack else {
-                        continue
-                    }
-                    print("[StreamPlayerView] Found video track!")
-                    return track
+                    print("🎥 Connecting video track from participant: \(participant.identity?.stringValue ?? "unknown")")
+                    uiView.track = track
+                    return
                 }
             }
         }
-        print("[StreamPlayerView] No subscribed video track found")
-        return nil
+        
+        // Clear track if no video found
+        uiView.track = nil
     }
+}
+
+#Preview {
+    StreamPlayerView()
+        .environmentObject(AppSession())
 }

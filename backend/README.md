@@ -21,12 +21,20 @@ Express + TypeScript service that brokers Firebase authentication, LiveKit viewe
 | `LIVEKIT_API_SECRET` | LiveKit API secret. |
 | `LIVEKIT_HOST` | Websocket URL for LiveKit (e.g. `wss://example.livekit.cloud`). |
 | `LIVEKIT_ROOM_NAME` | Room name for IzzoCam (defaults to `izzocam`). |
+| `GCS_SNAPSHOTS_BUCKET` | Google Cloud Storage bucket for temporary snapshot frames. |
+| `OPENAI_API_KEY` | OpenAI API key used for commentary generation. |
+| `OPENAI_VISION_MODEL` | (Optional) OpenAI vision model name (default `gpt-4o-mini`). |
 | `CORS_ALLOWED_ORIGINS` | Comma-delimited list of allowed origins (e.g. `https://izzo.cam,http://localhost:5173`). |
 
 ## Endpoints
 
 - `POST /api/viewer-token` – Requires Firebase ID token. Returns LiveKit viewer token + server URL.
 - `GET /api/metrics/viewers` – Requires Firebase ID token. Returns placeholder viewer metrics data; replace with LiveKit analytics pipeline later.
+- `POST /api/egress/snapshot` – Internal webhook for LiveKit egress snapshots; persists frame metadata to Firestore and uploads frames to GCS.
+- `GET /api/commentary/latest` – Returns latest commentary entries (hourly + ad-hoc) for authenticated viewers.
+- `POST /api/commentary/request` – Authenticated viewers trigger an on-demand commentary recap.
+- `POST /api/commentary/generate` – Authenticated manual trigger for hourly/adhoc generation (testing/admin).
+- `GET /api/commentary/config` – Fetch configurable commentary settings (dog name, tone).
 - `GET /healthz` – Liveness probe.
 
 ## Next steps

@@ -5,6 +5,7 @@ extension Color {
     static let izzoPrimary = Color(red: 0.3, green: 0.4, blue: 0.9)      // Vibrant blue
     static let izzoSecondary = Color(red: 0.9, green: 0.3, blue: 0.5)    // Pink accent
     static let izzoAccent = Color(red: 0.2, green: 0.8, blue: 0.6)       // Teal
+    static let izzoOrange = Color(red: 0.95, green: 0.6, blue: 0.2)      // App logo orange
     static let izzoBackground = Color(red: 0.97, green: 0.98, blue: 1.0)  // Light blue-white
     static let izzoCardBg = Color.white
     static let izzoTextPrimary = Color(red: 0.1, green: 0.1, blue: 0.2)

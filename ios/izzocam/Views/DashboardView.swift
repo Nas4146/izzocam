@@ -5,7 +5,7 @@ struct DashboardView: View {
     @State private var showWelcome = false
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             ZStack {
                 LinearGradient.izzoBackgroundGradient
                     .ignoresSafeArea()
@@ -18,8 +18,8 @@ struct DashboardView: View {
                         // Live stream card
                         streamCard
                         
-                        // Metrics cards
-                        metricsGrid
+                        // Commentary feed
+                        commentarySection
                         
                         Spacer(minLength: 20)
                     }
@@ -35,29 +35,15 @@ struct DashboardView: View {
                         .opacity(showWelcome ? 1 : 0)
                         .animation(.izzoSpring.delay(0.3), value: showWelcome)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        withAnimation(.izzoEaseInOut) {
-                            session.signOut()
-                        }
-                    }) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.izzoTextSecondary)
-                    }
-                    .scaleEffect(showWelcome ? 1.0 : 0.5)
-                    .opacity(showWelcome ? 1 : 0)
-                    .animation(.izzoSpring.delay(0.4), value: showWelcome)
-                }
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
-                        Image(systemName: "video.circle.fill")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(LinearGradient.izzoPrimaryGradient)
+                        Image("AppIcon")  // Use app icon instead of video icon
+                            .resizable()
+                            .frame(width: 20, height: 20)
                         
                         Text("IzzoCam")
                             .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundStyle(LinearGradient.izzoPrimaryGradient)
+                            .foregroundColor(.izzoOrange)  // Use orange instead of gradient
                     }
                     .scaleEffect(showWelcome ? 1.0 : 0.5)
                     .opacity(showWelcome ? 1 : 0)
@@ -76,11 +62,7 @@ struct DashboardView: View {
         VStack(spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Welcome back!")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundColor(.izzoTextSecondary)
-                    
-                    Text("Watch Izzo Live")
+                    Text("")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.izzoTextPrimary)
                 }
@@ -116,12 +98,7 @@ struct DashboardView: View {
                 .frame(height: 280)
                 .background(Color.black)
                 .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 20,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 20
-                    )
+                    RoundedRectangle(cornerRadius: 20)
                 )
             
             // Stream info
@@ -148,12 +125,7 @@ struct DashboardView: View {
             }
             .padding(20)
             .background(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 20,
-                    bottomTrailingRadius: 20,
-                    topTrailingRadius: 0
-                )
+                RoundedRectangle(cornerRadius: 20)
                 .fill(Color.white)
             )
         }
@@ -164,12 +136,9 @@ struct DashboardView: View {
     }
     
     private var metricsGrid: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible()),
-            GridItem(.flexible())
-        ], spacing: 16) {
+        HStack(spacing: 16) {
             MetricCard(
-                title: "Current Viewers",
+                title: "Viewers",
                 value: "\(session.viewerMetrics.currentViewers)",
                 icon: "eye.fill",
                 color: .izzoSuccess,
@@ -177,29 +146,24 @@ struct DashboardView: View {
             )
             
             MetricCard(
-                title: "Peak Today",
-                value: "\(session.viewerMetrics.peakToday)",
-                icon: "chart.line.uptrend.xyaxis",
-                color: .izzoWarning,
+                title: "Views",
+                value: "\(session.viewerMetrics.totalSessions)",
+                icon: "chart.bar.fill",
+                color: .izzoPrimary,
                 delay: 1.0
             )
-            
-            MetricCard(
-                title: "Total Sessions",
-                value: "\(session.viewerMetrics.totalSessions)",
-                icon: "person.3.fill",
-                color: .izzoPrimary,
-                delay: 1.1
-            )
-            
-            MetricCard(
-                title: "Uptime",
-                value: "24h",
-                icon: "clock.fill",
-                color: .izzoAccent,
-                delay: 1.2
-            )
         }
+    }
+    
+    private var commentarySection: some View {
+        VStack(spacing: 0) {
+            CommentaryFeedView()
+                .frame(height: 400) // Fixed height to keep layout consistent
+        }
+        .izzoCard()
+        .offset(y: showWelcome ? 0 : 50)
+        .opacity(showWelcome ? 1 : 0)
+        .animation(.izzoSpring.delay(0.8), value: showWelcome)
     }
     
     private var streamStatusText: String {
@@ -209,7 +173,9 @@ struct DashboardView: View {
         case .connecting:
             return "Connecting to the stream..."
         case .live:
-            return "Izzo is live and ready to play!"
+            return "Izzo is live!"
+        case .error(let message):
+            return "Error: \(message)"
         }
     }
 }
@@ -260,6 +226,7 @@ struct StreamStatusIndicator: View {
         case .offline: return .izzoError
         case .connecting: return .izzoWarning
         case .live: return .izzoSuccess
+        case .error: return .izzoError
         }
     }
     
@@ -268,21 +235,29 @@ struct StreamStatusIndicator: View {
         case .offline: return "Offline"
         case .connecting: return "Connecting"
         case .live: return "Live"
+        case .error: return "Error"
         }
     }
 }
 
 struct LiveStreamStats: View {
+    @EnvironmentObject private var session: AppSession
+    
     var body: some View {
         HStack(spacing: 20) {
-            StatItem(icon: "wifi", label: "HD Quality")
-            StatItem(icon: "speaker.wave.2.fill", label: "Stereo Audio")
+            StatItem(icon: "wifi", label: "HD")
             StatItem(icon: "video.fill", label: "30 FPS")
+            
+            Spacer()
+            
+            // Combined with stream stats
+            StatItem(icon: "eye.fill", label: "\(session.viewerMetrics.currentViewers) Viewers")
+            StatItem(icon: "chart.bar.fill", label: "\(session.viewerMetrics.totalSessions) Views")
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)  // Reduced padding
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 8)  // Smaller corner radius
                 .fill(Color.izzoBackground)
         )
     }
@@ -376,6 +351,7 @@ struct StatusBadge: View {
         case .offline: return .izzoError
         case .connecting: return .izzoWarning
         case .live: return .izzoSuccess
+        case .error: return .izzoError
         }
     }
 
@@ -384,6 +360,7 @@ struct StatusBadge: View {
         case .offline: return "Offline"
         case .connecting: return "Connecting"
         case .live: return "Live"
+        case .error: return "Error"
         }
     }
 }

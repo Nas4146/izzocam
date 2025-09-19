@@ -23,5 +23,13 @@ export const env = {
     host: requireEnv('LIVEKIT_HOST'),
     roomName: process.env.LIVEKIT_ROOM_NAME ?? 'izzocam',
   },
+  gcs: {
+    snapshotsBucket: requireEnv('GCS_SNAPSHOTS_BUCKET'),
+  },
+  openai: {
+    apiKey: requireEnv('OPENAI_API_KEY'),
+    visionModel: process.env.OPENAI_VISION_MODEL ?? 'gpt-4o-mini',
+    requestTimeoutMs: process.env.OPENAI_TIMEOUT_MS ? Number(process.env.OPENAI_TIMEOUT_MS) : 60_000,
+  },
   corsOrigins: (process.env.CORS_ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim()).filter(Boolean),
 };

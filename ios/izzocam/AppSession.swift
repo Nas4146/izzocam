@@ -11,11 +11,15 @@ final class AppSession: ObservableObject {
     @Published var isLoadingStream = false
     @Published var errorMessage: String?
 
-    private let backend = BackendClient()
+    private let backend = BackendClient.shared
     let liveKitController = LiveKitController()
 
     private var metricsTask: Task<Void, Never>?
     private var authListener: AuthStateDidChangeListenerHandle?
+    
+    var isAuthenticated: Bool {
+        user != nil
+    }
 
     init() {
         user = Auth.auth().currentUser
@@ -118,15 +122,17 @@ final class AppSession: ObservableObject {
                     self.errorMessage = "Failed to refresh metrics: \(error.localizedDescription)"
                 }
             }
-            try? await Task.sleep(for: .seconds(30))
+            // Use nanoseconds for iOS 15 compatibility
+            try? await Task.sleep(nanoseconds: 30_000_000_000) // 30 seconds
         }
     }
 }
 
-enum StreamState {
+enum StreamState: Equatable {
     case offline
     case connecting
     case live
+    case error(String)
 }
 
 extension User {

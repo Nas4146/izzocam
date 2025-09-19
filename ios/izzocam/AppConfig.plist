@@ -6,7 +6,7 @@
 <plist version="1.0">
 <dict>
     <key>API_BASE_URL</key>
-    <string>http://192.168.86.138:8082/api</string>
+    <string>https://izzocam-backend-17482328523.us-central1.run.app/api</string>
     <key>LIVEKIT_URL</key>
     <string>wss://izzocam-5u8a05zv.livekit.cloud</string>
 </dict>

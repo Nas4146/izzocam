@@ -5,6 +5,9 @@ import LiveKit
 final class LiveKitController: NSObject, ObservableObject {
     @Published private(set) var connectionState: ConnectionState = .disconnected
     @Published var tracksUpdated = false // Trigger for video view updates
+    @Published var isAudioMuted = true // Track mute state, default to muted
+    @Published var isMicrophoneEnabled = false // Track microphone state
+    @Published var isCameraEnabled = false // Track camera state
     let room = Room()
     private var isConnecting = false
 
@@ -83,6 +86,14 @@ final class LiveKitController: NSObject, ObservableObject {
                             try await remotePublication.set(subscribed: true)
                             print("[LiveKitController] Successfully subscribed to existing \(publication.kind) track")
                             
+                            // Apply mute state to audio tracks - Note: In viewer app, this is for UI state only
+                            // Actual audio muting would be controlled by the stream publisher
+                            print("[LiveKitController] Would apply mute state \(isAudioMuted) to audio track (viewer app)")
+                            if publication.kind == .audio {
+                                // Track that we have audio available for muting
+                                print("[LiveKitController] Audio track available for muting")
+                            }
+                            
                             // Trigger video view update
                             await MainActor.run {
                                 self.tracksUpdated.toggle()
@@ -94,6 +105,40 @@ final class LiveKitController: NSObject, ObservableObject {
                 }
             }
         }
+    }
+    
+    func toggleMute() {
+        isAudioMuted.toggle()
+        print("[LiveKitController] Audio muted: \(isAudioMuted)")
+        
+        // Apply mute state to all audio tracks - Note: For viewer app, this controls UI state
+        // In a viewer app, we typically can't mute remote participants' audio tracks
+        print("[LiveKitController] Audio muted: \(isAudioMuted)")
+        
+        for participant in room.remoteParticipants.values {
+            for publication in participant.trackPublications.values {
+                if publication.kind == .audio,
+                   let remotePublication = publication as? RemoteTrackPublication,
+                   let audioTrack = remotePublication.track as? RemoteAudioTrack {
+                    // For viewer app, this is mainly UI state - remote tracks are controlled by publisher
+                    print("[LiveKitController] Audio track found, mute state: \(isAudioMuted) (UI only)")
+                }
+            }
+        }
+    }
+    
+    func toggleMicrophone() {
+        isMicrophoneEnabled.toggle()
+        print("[LiveKitController] Microphone enabled: \(isMicrophoneEnabled)")
+        // Note: For viewer app, this mainly affects UI state
+        // Actual microphone control would be for publishers
+    }
+    
+    func toggleCamera() {
+        isCameraEnabled.toggle()
+        print("[LiveKitController] Camera enabled: \(isCameraEnabled)")
+        // Note: For viewer app, this mainly affects UI state
+        // Actual camera control would be for publishers
     }
 }
 
@@ -110,29 +155,7 @@ extension LiveKitController: RoomDelegate {
     nonisolated func room(_ room: Room, didConnectToRoom: Bool) {
         Task { @MainActor in
             print("[LiveKitController] Connected to room: \(room.name ?? "unknown"), participants: \(room.remoteParticipants.count)")
-            
-            // Subscribe to existing tracks from participants already in the room
-            for participant in room.remoteParticipants.values {
-                let participantName = participant.identity?.stringValue ?? "unknown"
-                print("[LiveKitController] Found existing participant: \(participantName)")
-                for publication in participant.trackPublications.values {
-                    if let remotePublication = publication as? RemoteTrackPublication {
-                        print("[LiveKitController] Found existing track: \(publication.kind), subscribed: \(remotePublication.isSubscribed)")
-                        
-                        if !remotePublication.isSubscribed {
-                            print("[LiveKitController] Subscribing to existing \(publication.kind) track...")
-                            Task {
-                                do {
-                                    try await remotePublication.set(subscribed: true)
-                                    print("[LiveKitController] Successfully subscribed to existing \(publication.kind) track")
-                                } catch {
-                                    print("[LiveKitController] Failed to subscribe to existing \(publication.kind) track: \(error)")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Track subscription is handled by subscribeToExistingTracks() in connect method
         }
     }
     
@@ -175,6 +198,14 @@ extension LiveKitController: RoomDelegate {
                     do {
                         try await publication.set(subscribed: true)
                         print("[LiveKitController] Successfully subscribed to audio track")
+                        
+                        // Apply current mute state to newly subscribed audio track
+                        if let audioTrack = publication.track as? RemoteAudioTrack {
+                            await MainActor.run {
+                                // For viewer app, this is mainly UI state - remote tracks are controlled by publisher
+                                print("[LiveKitController] Applied mute state to new audio track: muted=\(self.isAudioMuted) (UI only)")
+                            }
+                        }
                     } catch {
                         print("[LiveKitController] Failed to subscribe to audio track: \(error)")
                     }

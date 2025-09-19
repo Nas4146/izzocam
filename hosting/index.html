@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IzzoCam API</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 { margin-top: 0; }
+        .status { 
+            padding: 1rem; 
+            border-radius: 8px; 
+            margin: 1rem 0;
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        .endpoint {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 0.5rem 0;
+        }
+        .description {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 IzzoCam API Gateway</h1>
+        
+        <div class="status">
+            ✅ Firebase Hosting with Cloud Run Integration Active
+        </div>
+
+        <div class="description">
+            <h2>🚀 Live Video Streaming Platform</h2>
+            <p>IzzoCam provides real-time video streaming with AI-powered commentary and social features.</p>
+        </div>
+
+        <h3>📡 API Endpoints</h3>
+        <div class="endpoint">/api/health</div>
+        <div class="endpoint">/api/viewer/token</div>
+        <div class="endpoint">/api/snapshot</div>
+        
+        <div class="description">
+            <h3>🔧 How it works</h3>
+            <p>All <code>/api/**</code> requests are automatically routed to our Cloud Run backend service, providing seamless integration between Firebase Hosting and Google Cloud Run.</p>
+            
+            <h3>📱 Mobile App</h3>
+            <p>Download the IzzoCam iOS app for the full live streaming experience!</p>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem; opacity: 0.8;">
+            <p>Powered by Firebase Hosting + Google Cloud Run</p>
+        </div>
+    </div>
+
+    <script>
+        // Test API connectivity
+        fetch('/api/health')
+            .then(response => response.json())
+            .then(data => {
+                console.log('API Health Check:', data);
+            })
+            .catch(error => {
+                console.log('API not yet available:', error);
+            });
+    </script>
+</body>
+</html>

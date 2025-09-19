@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 
 struct StreamCredentials: Decodable {
     let token: String
@@ -24,6 +25,8 @@ struct ViewerMetrics: Decodable {
 enum BackendError: Error, LocalizedError {
     case invalidResponse
     case requestFailed(Int)
+    case serverError(Int)
+    case authenticationRequired
 
     var errorDescription: String? {
         switch self {
@@ -31,17 +34,27 @@ enum BackendError: Error, LocalizedError {
             return "Invalid response from backend"
         case .requestFailed(let code):
             return "Backend request failed with status \(code)"
+        case .serverError(let code):
+            return "Server error with status \(code)"
+        case .authenticationRequired:
+            return "Authentication required"
         }
     }
 }
 
 struct BackendClient {
+    static let shared = BackendClient()
+    
     private let apiBaseURL: URL = AppConfig.shared.apiBaseURL
+    let baseURL: URL = AppConfig.shared.apiBaseURL
+    
     private let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
+    
+    private init() {}
 
     func fetchViewerCredentials(idToken: String) async throws -> StreamCredentials {
         let url = apiBaseURL.appendingPathComponent("viewer-token")
@@ -77,5 +90,14 @@ struct BackendClient {
         }
 
         return try decoder.decode(ViewerMetrics.self, from: data)
+    }
+    
+    func addAuthToken(to request: inout URLRequest) async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw BackendError.authenticationRequired
+        }
+        
+        let token = try await user.getIDToken()
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     }
 }

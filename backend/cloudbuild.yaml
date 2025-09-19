@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/izzocam/izzocam-backend', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/izzocam/izzocam-backend']
+images:
+  - 'gcr.io/izzocam/izzocam-backend'
